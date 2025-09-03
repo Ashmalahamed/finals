@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dashboard - CropSight AI</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <!-- Navigation Bar (Sticky) -->
+  <nav class="navbar">
+    <h3>CropSight AI</h3>
+    <a href="/" onclick="event.preventDefault(); confirmLogout();">Logout</a>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="container">
+    <h1>Rice Leaf Disease Detection</h1>
+    <p>Upload a leaf image to detect diseases like Brown Spot, Hispa, or Leaf Blast.</p>
+
+    <!-- Instructions Button -->
+    <button onclick="openInstructions('en')" class="btn-primary" style="background-color:#1976d2; margin-bottom:10px;">
+      📘 How to Use
+    </button>
+
+    <!-- Language Buttons -->
+    <div style="margin-bottom: 20px;">
+      <button onclick="openInstructions('si')" class="lang-btn">සිංහල</button>
+      <button onclick="openInstructions('ta')" class="lang-btn">தமிழ்</button>
+    </div>
+
+    <!-- Image Upload -->
+    <input type="file" id="imageInput" accept="image/*" class="file-input" />
+    <button onclick="analyzeImage()" class="btn-primary">Analyze Leaf</button>
+
+    <!-- Prediction Result -->
+    <div id="result" class="result-box"></div>
+
+    <!-- Prediction History -->
+    <div id="historySection" class="history-box">
+      <h3>Recent Predictions</h3>
+      <button onclick="clearHistory()" class="btn-primary" style="background-color:#d32f2f;">🗑️ Clear History</button>
+      <ul id="historyList" style="list-style: none; padding: 0; margin-top: 10px;"></ul>
+    </div>
+  </div>
+
+  <!-- Instructions Modal -->
+  <div id="instructionsModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalTitle">How to Use CropSight AI</h3>
+        <span class="close-btn" onclick="closeInstructions()">&times;</span>
+      </div>
+      <div id="instructionsBody">
+        <!-- Dynamically injected -->
+      </div>
+      <button onclick="closeInstructions()" class="btn-close">Got It</button>
+    </div>
+  </div>
+
+  <!-- JavaScript -->
+  <script>
+    // Language Instructions
+    const instructions = {
+      en: {
+        title: "How to Use CropSight AI",
+        steps: `
+          <ol class="instruction-list">
+            <li>Click on <strong>"Choose File"</strong> and select a clear photo of a rice leaf.</li>
+            <li>Make sure the leaf fills the image and is in good light (not too dark or blurry).</li>
+            <li>Click the <strong>"Analyze Leaf"</strong> button.</li>
+            <li>Wait a few seconds — the system will check for diseases.</li>
+            <li>View the result: It will show the disease name and confidence level.</li>
+          </ol>
+          <p><strong>Tip:</strong> Use a clean background and avoid shadows for best results.</p>
+        `
+      },
+      si: {
+        title: "CropSight AI භාවිතා කරන ආකාරය",
+        steps: `
+          <ol class="instruction-list">
+            <li><strong>"ෆයිලය තෝරන්න"</strong> ඔබන්න සහ පැඬි කොළයක පැහැදිලි ඡායාරූපයක් තෝරන්න.</li>
+            <li>කොළය ඡායාරූපය පුරා වැටීම සහ හොඳ ආලෝකයක් (අඳුරු හෝ දුෂ්කර නොවීම) තහවුරු කරන්න.</li>
+            <li><strong>"කොළය විශ්ලේෂණය කරන්න"</strong> බොත්තම ඔබන්න.</li>
+            <li>තත්පර කිහිපයක් රැඳී සිටින්න — පද්ධතිය රෝග සඳහා පරීක්ෂා කරයි.</li>
+            <li>ප්‍රතිඵලය බලන්න: රෝගයේ නාමය සහ විශ්වාසය මට්ටම පෙන්වයි.</li>
+          </ol>
+          <p><strong>උපදෙස්:</strong> හොඳම ප්‍රතිඵල සඳහා පැහැදිලි පසුබිමක් භාවිතා කරන්න.</p>
+        `
+      },
+      ta: {
+        title: "CropSight AI-ஐ பயன்படுத்துவது எப்படி",
+        steps: `
+          <ol class="instruction-list">
+            <li><strong>"கோப்பைத் தேர்ந்தெடுக்கவும்"</strong> ஐக் கிளிக் செய்து, நெல் இலையின் தெளிவான புகைப்படத்தைத் தேர்ந்தெடுக்கவும்.</li>
+            <li>இலை படத்தை நிரப்பி, நல்ல ஒளியில் (மிகவும் இருட்டாகவோ அல்லது மங்கலாகவோ இல்லாமல்) இருப்பதை உறுதி செய்யவும்.</li>
+            <li><strong>"இலையைப் பகுப்பாய்வு செய்க"</strong> பொத்தானைக் கிளிக் செய்க.</li>
+            <li>சில வினாடிகள் காத்திருங்கள் — நோய்களுக்காக அமைப்பு சரிபார்க்கும்.</li>
+            <li>முடிவைப் பாருங்கள்: நோயின் பெயரையும், நம்பிக்கை அளவையும் காட்டும்.</li>
+          </ol>
+          <p><strong>குறிப்பு:</strong> சிறந்த முடிவுகளுக்கு தெளிவான பின்னணியைப் பயன்படுத்தவும்.</p>
+        `
+      }
+    };
+
+    // Open Instructions
+    function openInstructions(lang = 'en') {
+      const modal = document.getElementById('instructionsModal');
+      const title = document.getElementById('modalTitle');
+      const body = document.getElementById('instructionsBody');
+      title.innerText = instructions[lang].title;
+      body.innerHTML = instructions[lang].steps;
+      modal.style.display = 'flex';
+    }
+
+    // Close Instructions
+    function closeInstructions() {
+      document.getElementById('instructionsModal').style.display = 'none';
+    }
+
+    // Analyze Image
+    function analyzeImage() {
+      const fileInput = document.getElementById('imageInput');
+      const resultDiv = document.getElementById('result');
+      const file = fileInput.files[0];
+      if (!file) {
+        resultDiv.innerHTML = '<p style="color:red;">Please select an image!</p>';
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+      resultDiv.innerHTML = '<p>Analyzing ⏳</p>';
+
+      fetch('/predict', {
+        method: 'POST',
+        body: formData
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) {
+          resultDiv.innerHTML = `<p style="color:red;">Error: ${data.error}</p>`;
+        } else {
+          resultDiv.innerHTML = `
+            <h3>Disease: <strong>${data.class}</strong></h3>
+            <p><strong>Confidence:</strong> ${data.confidence}%</p>
+          `;
+          loadHistory(); // Refresh history after prediction
+        }
+      })
+      .catch(err => {
+        resultDiv.innerHTML = `<p style="color:red;">Server error. Try again.</p>`;
+      });
+    }
+
+    // Load History with Correct Sri Lankan Time
+    function loadHistory() {
+      fetch('/history')
+        .then(res => res.json())
+        .then(data => {
+          const list = document.getElementById('historyList');
+          list.innerHTML = '';
+          if (data.length === 0) {
+            list.innerHTML = '<li style="color:#666;">No history yet</li>';
+            return;
+          }
+          data.forEach(item => {
+            const li = document.createElement('li');
+
+            // Parse the timestamp as Sri Lankan time
+            const [datePart, timePart] = item.timestamp.split(' ');
+            const [year, month, day] = datePart.split('-');
+            const [hour, minute, second] = timePart.split(':');
+
+            // Create Date object assuming the time is already in Asia/Colombo
+            const localTime = new Date(`${year}-${month}-${day}T${hour}:${minute}:${second}+05:30`);
+
+            const options = {
+              timeZone: 'Asia/Colombo',
+              year: 'numeric',
+              month: 'short',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit'
+            };
+            const formattedTime = localTime.toLocaleString('en-LK', options);
+
+            li.innerHTML = `
+              <div style="background:#f0f8f0; padding:10px; margin:5px 0; border-radius:5px; text-align:left;">
+                <strong>${item.disease}</strong> (${item.confidence}%)
+                <br>
+                <small>${formattedTime}</small>
+              </div>
+            `;
+            list.appendChild(li);
+          });
+        })
+        .catch(err => {
+          console.error("Failed to load history:", err);
+          const list = document.getElementById('historyList');
+          list.innerHTML = '<li style="color:red;">Failed to load history</li>';
+        });
+    }
+
+    // Clear History
+    function clearHistory() {
+      if (!confirm("Are you sure you want to clear your history?")) return;
+      fetch('/clear_history', { method: 'POST' })
+        .then(res => res.json())
+        .then(() => loadHistory())
+        .catch(() => alert("Failed to clear history."));
+    }
+
+    // Confirm Logout
+    function confirmLogout() {
+      if (confirm("Are you sure you want to log out?")) {
+        window.location.href = '/';
+      }
+    }
+
+    // Load history on page load
+    window.onload = loadHistory;
+  </script>
+</body>
+</html>

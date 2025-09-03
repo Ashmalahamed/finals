@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Login - CropSight AI</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body class="auth-body">
+  <div class="auth-container">
+    <h2>CropSight AI</h2>
+    <p>Sign in to your account</p>
+    <form id="loginForm">
+      <input type="text" name="username" placeholder="Username" required class="input-field" />
+      <input type="password" name="password" placeholder="Password" required class="input-field" />
+      <button type="submit" class="btn-primary">Login</button>
+    </form>
+    <p>Don't have an account? <a href="/signup">Sign up</a></p>
+    <p><a href="/admin_login">🔑 Admin Login</a></p>
+    <div id="message"></div>
+  </div>
+
+  <script>
+    document.getElementById('loginForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const username = formData.get('username');
+      const password = formData.get('password');
+      const msgDiv = document.getElementById('message');
+      
+      // Clear previous messages
+      msgDiv.innerHTML = '';
+
+      // Optional: Basic client-side validation
+      if (!username.trim()) {
+        msgDiv.innerHTML = `<span style="color:red;">Please enter a username.</span>`;
+        return;
+      }
+      if (!password.trim()) {
+        msgDiv.innerHTML = `<span style="color:red;">Please enter a password.</span>`;
+        return;
+      }
+
+      try {
+        const res = await fetch('/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({ username, password })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          window.location.href = data.redirect || '/dashboard';
+        } else {
+          // Show generic security-safe error
+          msgDiv.innerHTML = `<span style="color:red;">Incorrect username or password</span>`;
+        }
+      } catch (err) {
+        msgDiv.innerHTML = `<span style="color:red;"> Server error. Please try again later.</span>`;
+      }
+    };
+  </script>
+</body>
+</html>

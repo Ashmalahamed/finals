@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Signup - CropSight AI</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body class="auth-body">
+  <div class="auth-container">
+    <h2>Create Account</h2>
+    <form id="signupForm">
+      <input type="text" name="username" placeholder="Username" required class="input-field" />
+      <div id="usernameError" class="error"></div>
+
+      <input type="email" name="email" placeholder="Email (e.g., user@gmail.com)" required class="input-field" />
+      <div id="emailError" class="error"></div>
+
+      <input type="password" name="password" placeholder="Password (min 8 chars, 1 number, 1 symbol)" required class="input-field" />
+      <div id="passwordError" class="error"></div>
+
+      <button type="submit" class="btn-primary">Sign Up</button>
+    </form>
+    <p>Already have an account? <a href="/">Login</a></p>
+    <div id="message"></div>
+  </div>
+
+  <script>
+    document.getElementById('signupForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const username = form.username.value.trim();
+      const email = form.email.value.trim();
+      const password = form.password.value;
+
+      document.getElementById('usernameError').textContent = '';
+      document.getElementById('emailError').textContent = '';
+      document.getElementById('passwordError').textContent = '';
+      document.getElementById('message').innerHTML = '';
+
+      let hasError = false;
+
+      if (username.length < 3) {
+        document.getElementById('usernameError').textContent = 'Username must be at least 3 characters.';
+        hasError = true;
+      }
+
+      const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/i;
+      if (!gmailRegex.test(email)) {
+        document.getElementById('emailError').textContent = 'Please use a Gmail address (e.g., user@gmail.com).';
+        hasError = true;
+      }
+
+      const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{8,}$/;
+      if (!passwordRegex.test(password)) {
+        document.getElementById('passwordError').textContent = 'Password must be at least 8 characters with 1 number and 1 symbol.';
+        hasError = true;
+      }
+
+      if (hasError) return;
+
+      const obj = Object.fromEntries(new FormData(form));
+      try {
+        const res = await fetch('/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams(obj)
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          alert('Account created! Please log in.');
+          window.location.href = '/';
+        } else {
+          document.getElementById('message').innerHTML = `<span style="color:red;">${data.msg}</span>`;
+        }
+      } catch (err) {
+        document.getElementById('message').innerHTML = `<span style="color:red;">Server error. Try again.</span>`;
+      }
+    };
+  </script>
+</body>
+</html>

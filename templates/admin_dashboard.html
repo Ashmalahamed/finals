@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin Dashboard - CropSight AI</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <nav class="navbar">
+    <h3>Admin Dashboard</h3>
+    <h3>CropSight-AI</h3>
+    <button onclick="logoutAdmin()" class="logout-btn">Logout</button>
+  </nav>
+
+  <div class="container">
+    <h1>CropSight AI - Admin Panel</h1>
+
+    <!-- Users Management Section -->
+    <h2 class="section-title">Users Management</h2>
+    <div class="form-container">
+      <button type="button" class="btn-primary" style="background-color:#1976d2; margin-bottom:15px;" onclick="toggleUserForm()">
+        <span id="addIcon">➕</span> Add New User
+      </button>
+
+      <div id="addUserForm" style="display: none;">
+        <form id="createUserForm">
+          <input type="text" name="username" placeholder="Username" required class="input-field" />
+          <input type="email" name="email" placeholder="Email (e.g., user@gmail.com)" required class="input-field" />
+          <input type="password" name="password" placeholder="Password (min 8 chars, 1 number, 1 symbol)" required class="input-field" />
+          <button type="submit" class="btn-primary">Create User</button>
+        </form>
+        <div id="createFormMsg"></div>
+      </div>
+    </div>
+
+    <!-- Search Users -->
+    <div class="search-box">
+      <input type="text" id="searchUser" placeholder="Search by username..." onkeyup="searchUsers()" />
+    </div>
+
+    <!-- Users Table -->
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Password</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="usersTableBody">
+          {% if users %}
+            {% for user in users %}
+              <tr data-username="{{ user[1] }}">
+                <td>{{ user[0] }}</td>
+                <td>{{ user[1] }}</td>
+                <td>{{ user[2] }}</td>
+                <td>
+                  <span class="password-masked" style="user-select: none;">••••••••</span>
+                  <button class="show-pass-btn" onclick="togglePassword(this)">Show</button>
+                  <span class="password-real" style="display: none;">[Hidden - In real system, password is not stored in plain text]</span>
+                </td>
+                <td>
+                  <button class="delete-btn" onclick="deleteUser({{ user[0] }}, '{{ user[1] }}')">Delete</button>
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="5" style="text-align:center; color:#666;">No users found</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Predictions Section -->
+    <h2 class="section-title">Recent Disease Predictions</h2>
+    <div class="search-box">
+      <input type="text" id="searchPrediction" placeholder="Search by user name..." onkeyup="searchPredictions()" />
+    </div>
+
+    <!-- Predictions Table -->
+    <div class="table-container">
+      <table id="predictionsTable">
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Disease</th>
+            <th>Confidence (%)</th>
+            <th>Timestamp (Sri Lanka Time)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if predictions %}
+            {% for pred in predictions %}
+              <tr class="prediction-row" data-user="{{ pred[0] }}">
+                <td>{{ pred[0] }}</td>
+                <td><strong>{{ pred[1] }}</strong></td>
+                <td>{{ pred[2] }}</td>
+                <td class="timestamp-cell" data-timestamp="{{ pred[3] }}"></td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="4" style="text-align:center; color:#666;">No predictions yet</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // Toggle Add User Form
+    function toggleUserForm() {
+      const form = document.getElementById('addUserForm');
+      const icon = document.getElementById('addIcon');
+      if (form.style.display === 'none' || !form.style.display) {
+        form.style.display = 'block';
+        icon.textContent = '➖';
+      } else {
+        form.style.display = 'none';
+        icon.textContent = '➕';
+      }
+    }
+
+    // Logout Admin
+    function logoutAdmin() {
+      if (confirm("Are you sure you want to log out?")) {
+        fetch('/logout_admin', { method: 'POST' })
+          .then(() => window.location.href = '/admin_login');
+      }
+    }
+
+    // Create New User
+    document.getElementById('createUserForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const msgDiv = document.getElementById('createFormMsg');
+      msgDiv.innerHTML = '';
+
+      const res = await fetch('/admin_create_user', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        msgDiv.innerHTML = `<div class="alert alert-success">${data.msg}</div>`;
+        e.target.reset();
+        setTimeout(() => location.reload(), 1000);
+      } else {
+        msgDiv.innerHTML = `<div class="alert alert-error">${data.error}</div>`;
+      }
+    };
+
+    // Delete User
+    function deleteUser(userId, username) {
+      if (!confirm(`Delete user "${username}"? This will also delete their history.`)) return;
+
+      fetch(`/admin_delete_user/${userId}`, { method: 'DELETE' })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            alert(data.msg);
+            location.reload();
+          } else {
+            alert('Error: ' + data.error);
+          }
+        })
+        .catch(() => alert('Server error. Could not delete user.'));
+    }
+
+    // Toggle Password Visibility
+    function togglePassword(button) {
+      const row = button.closest('tr');
+      const masked = row.querySelector('.password-masked');
+      const real = row.querySelector('.password-real');
+
+      if (real.style.display === 'inline') {
+        masked.style.display = 'inline';
+        real.style.display = 'none';
+        button.textContent = 'Show';
+      } else {
+        masked.style.display = 'none';
+        real.style.display = 'inline';
+        button.textContent = 'Hide';
+      }
+    }
+
+    // Search Users
+    function searchUsers() {
+      const input = document.getElementById('searchUser').value.toLowerCase();
+      const rows = document.querySelectorAll('#usersTableBody tr');
+      rows.forEach(row => {
+        const username = row.dataset.username.toLowerCase();
+        row.style.display = username.includes(input) ? '' : 'none';
+      });
+    }
+
+    // Search Predictions
+    function searchPredictions() {
+      const input = document.getElementById('searchPrediction').value.toLowerCase();
+      const rows = document.querySelectorAll('.prediction-row');
+      rows.forEach(row => {
+        const user = row.dataset.user.toLowerCase();
+        row.style.display = user.includes(input) ? '' : 'none';
+      });
+    }
+
+    // Format timestamps in Sri Lankan Time
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.timestamp-cell').forEach(cell => {
+        const isoTime = cell.getAttribute('data-timestamp');
+        const [datePart, timePart] = isoTime.split(' ');
+        const [year, month, day] = datePart.split('-');
+        const [hour, minute, second] = timePart.split(':');
+
+        const localTime = new Date(`${year}-${month}-${day}T${hour}:${minute}:${second}+05:30`);
+        const options = {
+          timeZone: 'Asia/Colombo',
+          year: 'numeric',
+          month: 'short',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        };
+        cell.textContent = localTime.toLocaleString('en-LK', options);
+      });
+    });
+  </script>
+</body>
+</html>
